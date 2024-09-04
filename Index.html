@@ -1,0 +1,1235 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Display a web map using an alternate projection</title>
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  color: #41424C;
+  font-family: 'Poppins', sans-serif;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+
+#filter {
+  position: absolute;
+  top: 0px;
+  left: 10px;
+  z-index: 1;
+  display: flex;
+  flex-direction: row; /* Changed to row */
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 10px;
+  border-radius: 5px;
+  max-width: calc(100% - 20px); /* Ensure it fits within the map */
+}
+
+.select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.select-wrapper select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 16px;
+  color: #41424C;
+  cursor: pointer;
+  width: 100%;
+  background-image: none; /* Remove the default arrow */
+}
+
+#reset-button-wrapper {
+  position: absolute;
+  top: 15px;
+  right: 10px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 10px;
+  border-radius: 5px;
+}
+
+#reset-button {
+  background-color: #F9F9F8;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 10px; /* Reduced left and right padding */
+  font-size: 16px;
+  color: red; /* Red text color */
+  cursor: pointer;
+  outline: none;
+  text-align: left; /* Align text to the left */
+}
+
+/* Legend */
+.legend {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 150;
+  background: #F9F9F8;
+  padding: 5px;
+  margin: 5px;
+  border: 1px solid #ccc;
+  color: #41424C;
+  width: fit-content;
+  position: absolute;
+  bottom: 20px;
+  left: 10px;
+}
+
+.legend h2 {
+  font-size: 15px;
+  margin-bottom: 5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.legend-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-right: 10px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.legend-icon.red {
+  background-color: red;
+  background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/RedDownArrow.svg/1200px-RedDownArrow.svg.png');
+  background-size: cover;
+}
+
+.legend-icon.blue {
+  background-color: blue;
+  background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BlueUpArrow.svg/1200px-BlueUpArrow.svg.png');
+  background-size: cover;
+}
+
+.legend-text {
+  font-size: 15px;
+}
+
+.popout {
+  position: absolute;
+  top: -30px;
+  left: calc(100% + 10px);
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 1;
+  display: none;
+  min-width: 600px;
+  width: auto;
+  max-width: 2500px;
+  height: 40px;
+}
+
+.legend-item:hover .popout {
+  display: block;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  #filter {
+    flex-direction: column;
+    gap: 5px;
+    max-width: calc(100% - 20px); /* Ensure it fits within the map */
+    top: 15px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .select-wrapper select {
+    font-size: 14px;
+    padding: 5px;
+  }
+
+  #reset-button {
+    font-size: 14px;
+    padding: 6px 20px;
+  }
+}
+
+/* Style for the legend */
+.legend {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 150;
+  background: #F9F9F8; /* Light gray background */
+  padding: 5px;
+  margin: 5px;
+  border: 1px solid #ccc;
+  color: #41424C; /* Dark gray text */
+  width: fit-content;
+  position: absolute;
+  bottom: 20px;
+  left: 10px;
+}
+
+.legend h2 {
+  font-size: 15px; /* Keep the legend title size */
+  margin-bottom: 5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+  position: relative; /* Added position relative for legend item */
+}
+
+.legend-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-right: 10px;
+  box-shadow: 0 0 0 2px #fff; /* White border for better visibility */
+}
+
+.legend-icon.red {
+  background-color: red;
+  background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/RedDownArrow.svg/1200px-RedDownArrow.svg.png');
+  background-size: cover;
+}
+
+.legend-icon.blue {
+  background-color: blue;
+  background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/BlueUpArrow.svg/1200px-BlueUpArrow.svg.png');
+  background-size: cover;
+}
+
+.legend-text {
+  font-size: 15px; /* Adjust text size */
+}
+
+/* Style for the popout */
+.popout {
+  position: absolute;
+  top: -30px; /* Move the popout higher up */
+  left: calc(100% + 10px); /* Match the position of the upstream popout */
+  background-color: #fff;
+  border: 1px solid #ccc;
+  padding: 10px; /* Increase padding for the text box */
+  z-index: 1;
+  display: none;
+  min-width: 600px; /* Ensure a minimum width */
+  width: auto; /* Allow width to adjust based on content */
+  max-width: 2500px; /* Limit maximum width */
+  height: 40px; /* Adjust the height */
+}
+
+.legend-item:hover .popout {
+  display: block;
+}
+</style>
+</head>
+<body>
+<div id="filter">
+  <div class="select-wrapper">
+    <select id="company-filter">
+      <option value="">Filter by Company</option>
+      <option value="Armadale Capital">Armadale Capital</option>
+      <option value="Beowulfmining">Beowulfmining</option>
+      <option value="Black Rock Mining">Black Rock Mining</option>
+      <option value="Black Swan Graphene">Black Swan Graphene</option>
+      <option value="Buxton Resources">Buxton Resources</option>
+      <option value="Castle Minerals">Castle Minerals</option>
+      <option value="Ceylon Graphite">Ceylon Graphite</option>
+      <option value="Cullinan Metals">Cullinan Metals</option>
+      <option value="E-Power Resources">E-Power Resources</option>
+      <option value="EcoGraf">EcoGraf</option>
+      <option value="Elcora Advanced Materials">Elcora Advanced Materials</option>
+      <option value="Emergent Metals">Emergent Metals</option>
+      <option value="Evion">Evion</option>
+      <option value="Evolution Energy Minerals">Evolution Energy Minerals</option>
+      <option value="First Graphene">First Graphene</option>
+      <option value="Focus Graphite">Focus Graphite</option>
+      <option value="Global Li-Ion Graphite">Global Li-Ion Graphite</option>
+      <option value="Graphano Energy">Graphano Energy</option>
+      <option value="Graphite One">Graphite One</option>
+      <option value="Gratomic">Gratomic</option>
+      <option value="Green Battery Minerals">Green Battery Minerals</option>
+      <option value="Green Critical Minerals">Green Critical Minerals</option>
+      <option value="Greenwing Resources">Greenwing Resources</option>
+      <option value="HAZER Group">HAZER Group</option>
+      <option value="Hexagon Energy Materials">Hexagon Energy Materials</option>
+      <option value="International Graphite">International Graphite</option>
+      <option value="iTech">iTech</option>
+      <option value="Leading Edge Materials">Leading Edge Materials</option>
+      <option value="Lithium Energy">Lithium Energy</option>
+      <option value="Lomiko Metals">Lomiko Metals</option>
+      <option value="Magnis Energy Technologies">Magnis Energy Technologies</option>
+      <option value="Mason Resources">Mason Resources</option>
+      <option value="Metals Australia">Metals Australia</option>
+      <option value="Mineral Commodities">Mineral Commodities</option>
+      <option value="NEO Battery Materials">NEO Battery Materials</option>
+      <option value="NextSource Materials">NextSource Materials</option>
+      <option value="Noble Mineral Exploration">Noble Mineral Exploration</option>
+      <option value="Northern Graphite">Northern Graphite</option>
+      <option value="Nouveau Monde Graphite">Nouveau Monde Graphite</option>
+      <option value="Novonix">Novonix</option>
+      <option value="Novonix /Lithium Energy">Novonix /Lithium Energy</option>
+      <option value="OAR Resources">OAR Resources</option>
+      <option value="Quantum Graphite">Quantum Graphite</option>
+      <option value="Renascor Resources">Renascor Resources</option>
+      <option value="Sarytogan Graphite">Sarytogan Graphite</option>
+      <option value="Sayona Mining">Sayona Mining</option>
+      <option value="South Star Battery Metals">South Star Battery Metals</option>
+      <option value="Sovereign Metals">Sovereign Metals</option>
+      <option value="SRG Mining">SRG Mining</option>
+      <option value="Syrah Resources">Syrah Resources</option>
+      <option value="Talga Group">Talga Group</option>
+      <option value="Tirupati Graphite">Tirupati Graphite</option>
+      <option value="Titan Mining">Titan Mining</option>
+      <option value="Triton Minerals">Triton Minerals</option>
+      <option value="Volt Resources">Volt Resources</option>
+      <option value="Walkabout Resources">Walkabout Resources</option>
+      <option value="Westwater Resources">Westwater Resources</option>
+    </select>
+  </div>
+  <div class="select-wrapper">
+    <select id="project-filter" disabled>
+      <option value="">Filter by Project</option>
+    </select>
+  </div>
+  <div class="select-wrapper">
+    <select id="style-selector">
+      <option value="mapbox://styles/hjminnis/clv9c2rm900bq01o07ehcb2de">Default View</option>
+      <option value="mapbox://styles/mapbox/satellite-streets-v12">Satellite View</option>
+    </select>
+  </div>
+  <div class="select-wrapper">
+    <button onclick="resetMap()" style="background-color: #F9F9F8; border: none; border-radius: 4px; padding: 8px 28px; font-size: 16px; color: red; cursor: pointer; outline: none;">
+      Reset Map
+    </button>
+  </div>
+</div>
+<div id="map"></div>
+
+<!-- Legend -->
+<div class="legend">
+  <h2>Map Pin Legend</h2>
+  <div class="legend-item">
+    <div class="legend-icon red"></div>
+    <span class="legend-text">Upstream (Mine)</span>
+    <div class="popout">
+    Upstream processing for graphite involves extracting and processing natural graphite from deposits to secure high-quality ore. 
+    </div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-icon blue"></div>
+    <span class="legend-text">Downstream (Processing/Enhancing Facility)</span>
+    <div class="popout">
+     Downstream processing refines concentrated graphite to enhance its purity and physical properties, particularly for use in lithium-ion batteries and other industrial applications.
+    </div>
+  </div>
+</div>
+
+<script>
+mapboxgl.accessToken = 'pk.eyJ1IjoiaGptaW5uaXMiLCJhIjoiY20wNXJvNW0zMG9uNzJpc2RpNjd4d3NhZiJ9.jkaImuCrvS9Sep19QYuKSA';
+const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/hjminnis/clv9c2rm900bq01o07ehcb2de',
+    center: [0, 0],
+    zoom: 1,
+    projection: 'naturalEarth'
+});
+
+map.addControl(new mapboxgl.NavigationControl());
+map.addControl(new mapboxgl.FullscreenControl(), 'top-right'); // Adjust position
+
+document.getElementById('style-selector').addEventListener('change', function() {
+    const styleURL = this.value;
+    map.setStyle(styleURL);
+});
+const markerData = [
+
+   {
+        "company": "Armadale Capital",
+        "project": "Mahenge Graphite Project",
+        "coordinates": [36.71691885977246, -8.680599324061001],
+        "website": "http://armadalecapitalplc.com/",
+        "placeholder": "Armadale Capital (ACP) is incorporated in the United Kingdom and is an AIM-listed investment company with a mandate to invest in natural resource projects in Africa.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Beowulfmining",
+        "project": "Aitolampi Graphite Project",
+        "coordinates": [28.5710620880127, 62.54027112530376],
+        "website": "https://beowulfmining.com/",
+        "placeholder": "Aitolampi graphite prospect was discovered by Beowulf in 2016 and are eastern extensions to the Haapamäki prospect, which contains old workings from when graphite prospecting was undertaken many years ago.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Beowulfmining",
+        "project": "Graphite Anode Materials Plant",
+        "coordinates": [21.764076945684845, 63.05993232097375],
+        "website": "https://beowulfmining.com/",
+        "placeholder": "Grafintec’s objective is to deliver a Finnish graphite based supply chain, that is sustainable, maximises resource conversion to final products, is competitive in cost and delivers a strong economic value proposition to the country.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Black Rock Mining",
+        "project": "Mahenge Mine",
+        "coordinates": [36.681528, -8.709795],
+        "website": "http://www.blackrockmining.com.au",
+        "placeholder": "The Mahenge Mine in Tanzania, managed by Black Rock Mining, holds one of the world's largest flake graphite resources.",
+        "mineProcessing": "Mine"
+    },
+  
+    {
+        "company": "Buxton Resources",
+        "project": "The Graphite Bull Project",
+        "coordinates": [116.29615771175787, -25.627077080278145],
+        "website": "www.buxtonresources.com.au",
+        "placeholder": "The Graphite Bull Project is located 280km East of Carnarvon, Western Australia, and covers an area of 22km.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Castle Minerals",
+        "project": "Kambale Graphite project",
+        "coordinates": [-2.4189179554772138, 9.577115813102655],
+        "website": "www.castleminerals.com.au",
+        "placeholder": "The Kambale graphite deposit was identified in the 1960s by Russian geologists prospecting for manganese.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Ceylon Graphite",
+        "project": "K1 Development",
+        "coordinates": [80.1679575288043, 7.112878811379444],
+        "website": "www.ceylongraphite.com",
+        "placeholder": "K1 is Ceylon Graphite’s first mining project and operates under the Sarcon Development legal umbrella. This site has received an Industrial Mining License Category A from the Geological Survey and Mines Bureau.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Ceylon Graphite",
+        "project": "M1 Development",
+        "coordinates": [80.49071041390873, 7.643963730897742],
+        "website": "www.ceylongraphite.com",
+        "placeholder": "M1 is an active exploration site in Malsiripura (near Kurunegella) and is operated under Ceylon Graphite’s subsidiary JADS Enterprises. Based on drilling /survey data and visible surface veins, this site promises to be very successful.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Ceylon Graphite",
+        "project": "H1 Development",
+        "coordinates": [80.56006904658042, 7.883298713142042],
+        "website": "www.ceylongraphite.com",
+        "placeholder": "A new site in Hakbewa on which Sarcon has commenced exploration with VLF surveys and drilling. The site is over 50 acres and has substantial surface graphite dump.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Ceylon Graphite",
+        "project": "P1 Development",
+        "coordinates": [80.11514935151195, 7.169029391875724],
+        "website": "www.ceylongraphite.com",
+        "placeholder": "P1 is in the Pasyala district. VLF work has commenced and drilling is expected to start shortly. The photograph shows a 30 ft. surface vein.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Cullinan Metals",
+        "project": "Lac-Des-Iles West Graphite Project",
+        "coordinates": [-75.4969944079977, 46.55031347095112],
+        "website": "www.cullinanmetals.com",
+        "placeholder": "The Lac-Des-Iles property consists of 43 mineral claims in one contiguous block covering approximately 2276 hectares land, near the town of Mont-Laurier in southern Québec.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "E-Power Resources",
+        "project": "Tetepisca",
+        "coordinates": [-69.38926867590384, 51.039911973439665],
+        "website": "https://e-powerresources.com/",
+        "placeholder": "The Tetepisca property consists of 230 claims covering a total area of 12,620 hectares located in the Tetepisca Graphite District.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "E-Power Resources",
+        "project": "Turgeon",
+        "coordinates": [-79.016667, 48.233333],
+        "website": "https://e-powerresources.com/",
+        "placeholder": "The Turgeon property consists of 331 claims covering 18,366 hectares located in the Abitibi region of western Quebec.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "EcoGraf",
+        "project": "Epanko",
+        "coordinates": [36.678939, -8.70336],
+        "website": "https://www.ecograf.com.au/",
+        "placeholder": "The Epanko Mine in Tanzania, developed by EcoGraf, targets a production capacity of up to 300,000 tonnes per annum, with a 40 to 50-year lifespan.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Elcora Advanced Materials",
+        "project": "Sakura graphite mine",
+        "coordinates": [80.53875880793449, 7.635151065625219],
+        "website": "www.elcoracorp.com",
+        "placeholder": "The Sakura graphite mine (also historically called the Ragedara mine or property) is a historic past producer, which at the height of its activity produced approximately 18,000 tonnes of high quality (92-99%) graphite per year.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Emergent Metals",
+        "project": "Casa Berardi",
+        "coordinates": [-79.231666666667, 49.571666666667],
+        "website": "www.emergentmetals.com",
+        "placeholder": "In the 1970s and 80s, exploration in the Casa Berardi area targeted gold and base metal deposits through drilling in iron formations. However recent exploration has uncovered Graphite.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Evion",
+        "project": "Maniry Project",
+        "coordinates": [44.87112, -24.53887],
+        "website": "https://eviongroup.com/",
+        "placeholder": "The Company has successfully fast tracked its flagship Maniry graphite project in Southern Madagascar, to the completed Bankable Feasibility Study (BFS) Stage, in 4.5 years.",
+        "mineProcessing": "Mine"
+    },
+   
+    {
+        "company": "Evion",
+        "project": "Battery Anode Material Project",
+        "coordinates": [10.4515, 51.1657],
+        "website": "https://eviongroup.com/",
+        "placeholder": "Underpinned by their Maniry Graphite Project, this battery anode material plant has the potential to uniquely position Evion to capitalise on the strong growth in demand for non-Chinese supplies of CSPG from the European lithium-ion battery market.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Evolution Energy Minerals",
+        "project": "Chilalo Project",
+        "coordinates": [38.630264, -9.98269],
+        "website": "www.evolutionenergyminerals.com.au",
+        "placeholder": "In early 2023, Evolution discovered two new high-grade mineralised zones – Chilalo East and Chilalo E2. High-grade mineralisation at Chilalo East has been defined over 1.6km out of a potential 3.5km strike length indicated by the high-conductance electromagnetic conductor.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "First Graphene",
+        "project": "PureGRAPH®",
+        "coordinates": [115.78021083558194, -32.151008011369164],
+        "website": "www.firstgraphene.net",
+        "placeholder": "First Graphene Ltd. is the leading supplier of high-performing graphene products with a robust manufacturing platform and an established 100 tonne/year graphene production capacity.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Focus Graphite",
+        "project": "Lac Knife",
+        "coordinates": [-67.17681746302836, 52.56287196065704],
+        "website": "www.focusgraphite.com",
+        "placeholder": "Focus’ flagship Lac Knife Project is a 100% owned, high-grade crystalline flake graphite deposit located in northeastern Québec, about 27 kilometres south of Fermont.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Focus Graphite",
+        "project": "Lac Tétépisca",
+        "coordinates": [-69.40709563450943, 51.032268519850795],
+        "website": "www.focusgraphite.com",
+        "placeholder": "Lac Tétépisca is 100% owned by Focus and is located in the southwest Manicouagan reservoir area, 234 km north-northwest of Baie-Comeau.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Global Li-Ion Graphite",
+        "project": "Amabato Arana mine",
+        "coordinates": [48.4145349306885, -18.935041701303327],
+        "website": "https://globalli-iongraphite.com/",
+        "placeholder": "Global Li-Ion Corp is an exploration and mineral development company that provides investors with a unique a chance to gain exposure to the graphite market.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Graphano Energy",
+        "project": "Lac Aux Bouleaux Graphite",
+        "coordinates": [-75.52753885683944, 46.398173723979625],
+        "website": "www.graphano.com",
+        "placeholder": "The Lac Aux Bouleaux Graphite Property (the “LAB Graphite Property”) consists of 14 mineral claims in a contiguous block totalling 738.12 hectares land.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Graphano Energy",
+        "project": "Dudley and Lac Vert-Bouthillier graphite",
+        "coordinates": [-75.52753885683944, 46.398173723979625],
+        "website": "www.graphano.com",
+        "placeholder": "Graphano has staked two sets of additional graphite claims, 5 km and 10 km south from the Lac Aux Bouleaux project, as part of the Company’s consolidation strategy.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Graphano Energy",
+        "project": "Standard Property",
+        "coordinates": [-75.237227450649, 46.54826958282864],
+        "website": "www.graphano.com",
+        "placeholder": "The 2022 geophysical survey completed over the area identified conductive anomalies outlining the graphite zone, which extends over 500 meters, and encompasses the historical mine.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Graphite One",
+        "project": "Graphite Creek",
+        "coordinates": [-165.54099, 65.038424],
+        "website": "www.graphiteoneinc.com",
+        "placeholder": "The Graphite One Project is envisioned to be an owner-operated year-round truck and shovel operation situated on the Seward Peninsula in Alaska.",
+        "mineProcessing": "Mine"
+    },
+   {
+        "company": "Graphite One",
+        "project": "Advanced Graphite Materials Manufacturing",
+        "coordinates": [ -80.79160939755907, 41.198681513421654],
+        "website": "www.graphiteoneinc.com",
+        "placeholder": "Graphite One’s proposed Advanced Graphite Materials Manufacturing Facility.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Gratomic",
+        "project": "Aukam Graphite Project",
+        "coordinates": [16.794962836245823, -26.902053471415904],
+        "website": "www.gratomic.ca",
+        "placeholder": "The Aukam Graphite Project is located in southern Namibia close to the port city of Luderitz.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Gratomic",
+        "project": "Buckingham Graphite",
+        "coordinates": [-75.41692786831065, 45.5863992265676],
+        "website": "www.gratomic.ca",
+        "placeholder": "The Buckingham Graphite property covers 480 hectares in eight claim blocks and is located 7 kilometres northwest of Buckingham, Quebec, Canada.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Gratomic",
+        "project": "Jacobina and Igrapiuna Graphite",
+        "coordinates": [-40.020381307924254, -11.3774346104256],
+        "website": "www.gratomic.ca",
+        "placeholder": "Jacobina and Igrapiuna Graphite Projects are located near Gratomic's Capim Grosso graphite project and share a similar geological footprint.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Gratomic",
+        "project": "Capim Grosso",
+        "coordinates": [-40.020381307924254, -11.3774346104256],
+        "website": "www.gratomic.ca",
+        "placeholder": "Gratomic’s Capim Grosso Graphite Project comprises mineral claim 870.180/2012, covering a surface area of 426.03 Ha, owned by Zumbi Mineração Brazil, a whole owned subsidiary of Gratomic, Inc.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Green Battery Minerals",
+        "project": "Berkwood Graphite Project",
+        "coordinates": [-68.75378379870442, 50.64993700018265],
+        "website": "www.greenbatteryminerals.com",
+        "placeholder": "The Berkwood Graphite Project is immediately adjacent to Nouveau Monde’s $3.6 Billion NPV Uatnam Graphite Mining Project and is likely part of the same geological structure, especially since the grades and metallurgy of both companies graphite is similar.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Green Critical Minerals",
+        "project": "McIntosh",
+        "coordinates": [127.86570598106529, -17.54416542478226],
+        "website": "https://gcminerals.com.au/",
+        "placeholder": "McIntosh Flake stands out with its substantial 1.1Mt graphite reserve and significant $14 million investment in development, positioning it as one of Australia's foremost and strategically vital graphite ventures.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Greenwing Resources",
+        "project": "Graphmada",
+        "coordinates": [49.065349940034324, -18.819865510402845],
+        "website": "www.greenwingresources.com",
+        "placeholder": "Currently, the Graphmada Graphite project is on care and maintenance as they plan for its expansion.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "HAZER Group",
+        "project": "Commercial Demonstration Plant",
+        "coordinates": [115.77302291474095, -32.147596924484155],
+        "website": "www.hazergroup.com.au",
+        "placeholder": "Hazer Group Limited is a pioneering ASX-listed technology development company undertaking the commercialisation of the HAZER® Process, a low-emission hydrogen and graphite production process.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Hexagon Energy Materials",
+        "project": "McIntosh",
+        "coordinates": [127.86570598106529, -17.54416542478226],
+        "website": "www.hxgenergymaterials.com.au",
+        "placeholder": "McIntosh Flake stands out with its substantial 1.1Mt graphite reserve and significant $14 million investment in development, positioning it as one of Australia's foremost and strategically vital graphite ventures.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Hexagon Energy Materials",
+        "project": "Ceylon Graphite Project",
+        "coordinates": [-86.16435413146677, 33.07571034182061],
+        "website": "www.hxgenergymaterials.com.au",
+        "placeholder": "In December 2021 Hexagon signed a development deal (Binding Earn-in-Option) with Canadian headquartered Graphite project development company South Star Battery Metals Corporation (South Star) (TSXV: STS) in relation to Hexagon’s 80% owned Ceylon Graphite Project (comprising of a ground holding of 500 km2) located in Alabama in the USA.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "International Graphite",
+        "project": "Springdale Graphite Project",
+        "coordinates": [120.16779342774139, -33.83497661135092],
+        "website": "www.internationalgraphite.com.au",
+        "placeholder": "Springdale is expected to supply graphite concentrate to feed the company’s downstream processing operations, at Collie, in a vertically integrated mine-to-market operation that will potentially be the first in this Tier 1 mining jurisdiction.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "International Graphite",
+        "project": "Collie Downstream Processing",
+        "coordinates": [116.13780589999998, -33.34275653889032],
+        "website": "www.internationalgraphite.com.au",
+        "placeholder": "International Graphite is building a multi-faceted downstream processing operation at Collie, incorporating state of the art research and development facilities, to meet global demand for graphite products and maximise the value of its graphite resource.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "iTech",
+        "project": "Campoona Project",
+        "coordinates": [136.43977146582867, -33.51247239734821],
+        "website": "https://www.itechminerals.com.au/",
+        "placeholder": "The Campoona Project is a significantly de-risked opportunity to supply graphite into the growing battery technology market.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Leading Edge Materials",
+        "project": "Woxna Graphite",
+        "coordinates": [15.609362330688503, 61.41192280007959],
+        "website": "www.leadingedgematerials.com",
+        "placeholder": "Built and permitted graphite mine and plant in central Sweden.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Leading Edge Materials",
+        "project": "Woxna Graphite (CSPG)",
+        "coordinates": [15.609362330688503, 61.41192280007959],
+        "website": "www.leadingedgematerials.com",
+        "placeholder": "Built and permitted graphite mine and plant in central Sweden.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Lithium Energy",
+        "project": "Battery Anode Material",
+        "coordinates": [146.81697984311498, -19.25900522563858],
+        "website": "www.lithiumenergy.com.au",
+        "placeholder": "Lithium Energy is focused on developing a vertically integrated Battery Anode Material (BAM) business in Queensland.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Lomiko Metals",
+        "project": "La Loutre Project",
+        "coordinates": [-75.00001517731235, 46.00010989468938],
+        "website": "www.lomiko.com",
+        "placeholder": "Lomiko has mineral rights to the La Loutre Project, located in the Laurentides administrative region (also known as the Laurentians) in the province of Québec, Canada.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Magnis Energy Technologies",
+        "project": "Nachu Project",
+        "coordinates": [38.864043, -9.927529],
+        "website": "www.magnis.com.au",
+        "placeholder": "Located near Ruangwa, Nachu is distinguished by its large size and consistent ore quality, boasting a low-cost operational model.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Magnis Energy Technologies",
+        "project": "iM3NY Lithium-ion Battery Plant",
+        "coordinates": [-76.04683493208469, 42.10779364028456],
+        "website": "www.magnis.com.au",
+        "placeholder": "Operates a significant lithium-ion battery plant in Endicott, New York, focusing on increasing production capabilities.",
+        "mineProcessing": "Processing"
+    },
+   
+    {
+        "company": "Metals Australia",
+        "project": "Lac Rainy Graphite Project",
+        "coordinates": [-77.200000918114, 49.70000693103618],
+        "website": "www.metalsaustralia.com.au",
+        "placeholder": "The Nyngan scandium resource is located in NSW, Australia approximately 500 kilometers northwest of Sydney.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Mineral Commodities",
+        "project": "Skaland (Traelen) Mine",
+        "coordinates": [17.3272, 69.4417],
+        "website": "www.mineralcommodities.com",
+        "placeholder": "As Scandinavia's only graphite mine and a major producer in Europe, Skaland plays a crucial role in supplying natural flake graphite.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Mineral Commodities",
+        "project": "Munglinup Graphite Project",
+        "coordinates": [120.85755, -33.69240],
+        "website": "www.mineralcommodities.com",
+        "placeholder": "Situated along the border of the shires of Esperance and Ravensthorpe in Western Australia, positioned to leverage strategic location advantages.",
+        "mineProcessing": "Mine"
+    },
+    
+    {
+        "company": "NEO Battery Materials",
+        "project": "Silicon Anode Project",
+        "coordinates": [126.82980376767999, 37.29155688477606],
+        "website": "www.neobatterymaterials.com",
+        "placeholder": "NEO Battery Materials Ltd. (TSXV: NBM) (OTC: NBMFF) is an Ontario-based company focused on silicon anode materials for lithium-ion batteries in electric vehicles and energy storage applications.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "NextSource Materials",
+        "project": "Molo Mine",
+        "coordinates": [45.128284, -24.002059],
+        "website": "www.nextsourcematerials.com",
+        "placeholder": "Known for being one of the largest and highest quality graphite deposits globally.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "NextSource Materials",
+        "project": "Battery Anode Facilities",
+        "coordinates": [57.50070331123202, -20.14153680892589],
+        "website": "www.nextsourcematerials.com",
+        "placeholder": "To meet rapidly growing demand for anode material for lithium-ion batteries used in electric vehicles, NextSource has secured an exclusive international partnership to develop turn-key processing facilities, called Battery Anode Facilities (BAFs).",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Noble Mineral Exploration",
+        "project": "Buckingham",
+        "coordinates": [-75.4202301651421, 45.62994413253386],
+        "website": "www.noblemineralexploration.com",
+        "placeholder": "The Buckingham graphite property is located in the Outaouais area of the Grenville Subprovince of Quebec.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Northern Graphite",
+        "project": "Bissett Creek Project",
+        "coordinates": [-78.06030763231824, 46.22559885381108],
+        "website": "www.northerngraphite.com",
+        "placeholder": "This project is well-advanced in its permitting and nearing construction readiness.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Northern Graphite",
+        "project": "Okanjande Mine",
+        "coordinates": [16.617271912114933, -20.596469951052715],
+        "website": "www.northerngraphite.com",
+        "placeholder": "A previously operational mine, ready for quick and cost-effective reactivation.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Northern Graphite",
+        "project": "Lac des Iles Mine",
+        "coordinates": [-75.5289826741849, 46.37219053212972],
+        "website": "www.northerngraphite.com",
+        "placeholder": "The only active graphite mine in the region, recognized for its sustainable production and economic significance.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Nouveau Monde Graphite",
+        "project": "Matawinie Project",
+        "coordinates": [-74.0497648335709, 46.66742685373861],
+        "website": "www.nouveaumonde.group/en",
+        "placeholder": "Focused on producing a significant amount of active anode material from its graphite concentrate.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Nouveau Monde Graphite",
+        "project": "Lac Gueret (Uatnan) Project",
+        "coordinates": [-69.064364, 51.122303],
+        "website": "www.nouveaumonde.group/en",
+        "placeholder": "Projected to become the largest natural graphite production in the world Strategically enabling NMG to supply future anticipated growth in North America and Europe.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Nouveau Monde Graphite",
+        "project": "Becancour Battery Material Plant",
+        "coordinates": [-72.39339103615406, 46.36414819605151],
+        "website": "www.nouveaumonde.group/en",
+        "placeholder": "Beneficiation of graphite concentrate from Matawinie to be transformed into approximately 43 ktpa of active anode material.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Novonix",
+        "project": "Novonix Anode Material",
+        "coordinates": [-85.32401877116394, 35.03899305765882],
+        "website": "www.novonix.com",
+        "placeholder": "NOVONIX™ Anode Materials (NAM) manufactures high-performance, synthetic graphite anode materials, a critical component of lithium-ion batteries that power electric vehicles and energy storage units.",
+        "mineProcessing": "Processing"
+    },
+
+    {
+        "company": "OAR Resources",
+        "project": "Oar Graphite Project",
+        "coordinates": [121.899, -32.154],
+        "website": "www.oarresources.com.au",
+        "placeholder": "Features a JORC Resource of large-flake graphite, with recent developments highlighting in-demand battery-grade fine flake graphite.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Quantum Graphite",
+        "project": "Uley Graphite Project",
+        "coordinates": [135.7021406694203, -34.79916118684872],
+        "website": "quantumgraphite.wp.gate.com",
+        "placeholder": "Known for its diverse range of graphite products catering to both traditional and emerging markets.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Renascor Resources",
+        "project": "Siviour Mine",
+        "coordinates": [136.419392, -33.918288],
+        "website": "www.renascor.com.au",
+        "placeholder": "Plans a long-term production of graphite, emphasizing its cost-effectiveness and strong economic prospects.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Renascor Resources",
+        "project": "Bolivar Facility",
+        "coordinates": [138.58852673980945, -34.76793219009249],
+        "website": "www.renascor.com.au",
+        "placeholder": "Specializes in manufacturing purified spherical graphite for lithium-ion batteries, utilizing resources from its Siviour Graphite Mine to support the electric vehicle market.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Sarytogan Graphite",
+        "project": "Sarytogan Graphite Project",
+        "coordinates": [74.4385968140549, 48.07629893172561],
+        "website": "www.sarytogangraphite.com.au",
+        "placeholder": "Holds an exploration license covering a significant area, with a focus on developing a substantial graphite operation.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Sarytogan Graphite",
+        "project": "Kenesar Graphite Exploration Project",
+        "coordinates": [69.40601646347596, 53.28753909165179],
+        "website": "www.sarytogangraphite.com.au",
+        "placeholder": "Marks the beginning of a series of battery metals projects aimed at responsible and sustainable mining.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Sayona Mining",
+        "project": "Kimberley Graphite Project",
+        "coordinates": [118.61644814445566, -20.361833867408098],
+        "website": "www.sayonamining.com.au",
+        "placeholder": "Engaged in exploration with significant findings of graphite mineralisation.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "South Star Battery Metals",
+        "project": "Santa Cruz Project",
+        "coordinates": [-39.58741202852051, -16.374529839213633],
+        "website": "www.southstarbatterymetals.com",
+        "placeholder": "The Santa Cruz Graphite Project, located in Southern Bahia, is the first of a series of battery metals projects that will be put into production.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "South Star Battery Metals",
+        "project": "BamaStar Project (USA)",
+        "coordinates": [-86.16435413146677, 33.07571034182061],
+        "website": "www.southstarbatterymetals.com",
+        "placeholder": "In December 2021 Hexagon signed a development deal (Binding Earn-in-Option) with Canadian headquartered Graphite project development company South Star Battery Metals Corporation (South Star) (TSXV: STS) in relation to Hexagon’s 80% owned Ceylon Graphite Project (comprising of a ground holding of 500 km2) located in Alabama in the USA.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "South Star Battery Metals",
+        "project": "AAM",
+        "coordinates": [-86.16435413146677, 33.07571034182061],
+        "website": "www.southstarbatterymetals.com",
+        "placeholder": "In December 2021 Hexagon signed a development deal (Binding Earn-in-Option) with Canadian headquartered Graphite project development company South Star Battery Metals Corporation (South Star) (TSXV: STS) in relation to Hexagon’s 80% owned Ceylon Graphite Project (comprising of a ground holding of 500 km2) located in Alabama in the USA.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Sovereign Metals",
+        "project": "KASIYA RUTILE-GRAPHITE PROJECT",
+        "coordinates": [33.9359520765557, -13.651491138399797],
+        "website": "www.sovereignmetals.com.au",
+        "placeholder": "The Company’s objective is to develop a large-scale, long life rutile-graphite operation, focusing on developing an environmentally responsible, sustainable and socially uplifting operation.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "SRG Mining",
+        "project": "Lola Graphite Project",
+        "coordinates": [-8.533235626987604, 7.801674154077585],
+        "website": "www.srgmining.com",
+        "placeholder": "Aiming for complete integration as a supplier of battery anode material to the European market.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Syrah Resources",
+        "project": "Balama Mine",
+        "coordinates": [38.658733, -13.308189],
+        "website": "www.syrahresources.com.au",
+        "placeholder": "A major graphite source converted into anode material for lithium-ion batteries, supporting the growing electric vehicle sector.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Syrah Resources",
+        "project": "Vidalia Facility",
+        "coordinates": [-91.49641529814757, 31.552125568958566],
+        "website": "www.syrahresources.com.au",
+        "placeholder": "Processes graphite from the Balama Mine into active anode material for lithium-ion batteries, supporting the expanding electric vehicle industry.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Talga Group",
+        "project": "Vittangi Project",
+        "coordinates": [21.40797, 67.70447],
+        "website": "www.talgagroup.com",
+        "placeholder": "Vital for Europe and Sweden’s shift towards more sustainable battery production.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Talga Group",
+        "project": "Luleå Anode Refinery",
+        "coordinates": [22.28878586518343, 65.57254084292504],
+        "website": "www.talgagroup.com",
+        "placeholder": "Dedicated to producing sustainable anode material for batteries.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Tirupati Graphite",
+        "project": "Vatomina",
+        "coordinates": [49.1281486246842, -18.57745909246046],
+        "website": "https://tirupatigraphite.co.uk/",
+        "placeholder": "The Sahamamy and Vatomina Propetries are Madagascar flake graphite project. The Sahamamy Project is located approximately 8 km west of the Vatomina Project.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Tirupati Graphite",
+        "project": "Sahamamy",
+        "coordinates": [48.97632322468396, -18.567759501053093],
+        "website": "https://tirupatigraphite.co.uk/",
+        "placeholder": "The Sahamamy and Vatomina Propetries are Madagascar flake graphite project. The Sahamamy Project is located approximately 8 km west of the Vatomina Project.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Titan Mining",
+        "project": "Kilbourne Graphite Project",
+        "coordinates": [-75.40916208835742, 44.26487539424905],
+        "website": "https://titanminingcorp.com/",
+        "placeholder": "Kilbourne graphite Project, situated on the lands where the Empire State Mine (Owned by Titan Mining) is currently operational in upstate New York.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Triton Minerals",
+        "project": "Ancuabe Graphite Project",
+        "coordinates": [40.001299868748475, -13.00452474091321],
+        "website": "www.tritonminerals.com",
+        "placeholder": "Positioned in a well-known graphite region and expanding its capacity to meet European and North American demand.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Triton Minerals",
+        "project": "Cobra Plains Graphite Project",
+        "coordinates": [38.7635, -13.1350],
+        "website": "www.tritonminerals.com",
+        "placeholder": "Located near a major graphite mine and focused on increasing graphite production.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Volt Resources",
+        "project": "Zavalievsky Mine",
+        "coordinates": [30.016302, 48.211279],
+        "website": "www.voltresources.com.au",
+        "placeholder": "Expands its graphite production capacity to serve European and North American markets.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Volt Resources",
+        "project": "Bunyu Mine",
+        "coordinates": [39.151444, -10.287791],
+        "website": "www.voltresources.com.au",
+        "placeholder": "Aims to produce flake graphite to meet growing demand in battery and industrial sectors.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Volt Resources",
+        "project": "Alabama Facility",
+        "coordinates": [-87.60958233516635, 33.22130560227896],
+        "website": "www.voltresources.com.au",
+        "placeholder": "Graphite processing facility in Alabama, USA, to produce high-quality graphite products, strengthening its supply chain in the North American market.",
+        "mineProcessing": "Processing"
+    },
+    {
+        "company": "Walkabout Resources",
+        "project": "Lindi Jumbo Project",
+        "coordinates": [38.916904, -9.91343],
+        "website": "www.walkaboutresources.com",
+        "placeholder": "Lindi Jumbo Graphite Mine is scheduled to supply premium natural flake graphite.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Westwater Resources",
+        "project": "Coosa Project",
+        "coordinates": [-87.269, 33.077],
+        "website": "www.westwaterresources.net",
+        "placeholder": "Coosa Graphite Project is located in western Coosa County, east-central Alabama, USA, in the heart of the historic, past-producing ‘Alabama Graphite Belt’.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Westwater Resources",
+        "project": "BAMA Mine Project",
+        "coordinates": [-86, 32],
+        "website": "www.westwaterresources.net",
+        "placeholder": "The Bama Mine was the southernmost mine in the Alabama Graphite Belt and produced more tonnage and higher quality flake graphite than any other graphite mine in Alabama. The Bama Mine ceased production in the 1930s when a fire destroyed the mill.",
+        "mineProcessing": "Mine"
+    },
+    {
+        "company": "Westwater Resources",
+        "project": "Kellyton Plant",
+        "coordinates": [-86.03194653251028, 32.96912609308378],
+        "website": "www.westwaterresources.net",
+        "placeholder": "The facility will process raw graphite into refined, battery-grade graphite for use in batteries that power electric vehicles, electronics and many other projects.",
+        "mineProcessing": "Processing"
+    }
+
+
+
+
+
+
+];let markers = [];
+const companyFilter = document.getElementById('company-filter');
+const originalCompanyOptions = Array.from(companyFilter.options);
+
+const companyOptions = Array.from(companyFilter.options).slice(1); // Exclude the first "Filter by Company" option
+companyOptions.sort((a, b) => a.text.localeCompare(b.text));
+companyOptions.unshift(companyFilter.options[0]); // Add the first option back
+companyFilter.innerHTML = '';
+companyOptions.forEach(option => companyFilter.add(option));
+
+// Function to filter projects based on selected company
+function filterProjects() {
+    const selectedCompany = document.getElementById('company-filter').value;
+    const projectFilter = document.getElementById('project-filter');
+    projectFilter.innerHTML = '<option value="">Filter by Project</option>';
+    const projects = markerData.filter(marker => marker.company === selectedCompany);
+    projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project.project;
+        option.textContent = project.project;
+        projectFilter.appendChild(option);
+    });
+    projectFilter.disabled = selectedCompany === '';
+}
+
+// Function to filter and display markers based on selected company and project
+function filterMarkers() {
+    const selectedCompany = document.getElementById('company-filter').value;
+    const selectedProject = document.getElementById('project-filter').value;
+
+    // Remove all existing markers
+    markers.forEach(marker => marker.remove());
+    markers = [];
+
+    if (selectedCompany) {
+        // Filter markers by selected company
+        const companyMarkers = markerData.filter(marker => marker.company === selectedCompany);
+        companyMarkers.forEach(markerInfo => {
+            const color = markerInfo.mineProcessing === 'Mine' ? 'red' : 'blue';
+            const marker = new mapboxgl.Marker({
+                color: color,
+                draggable: false,
+                rotation: 45,
+                scale: .5
+            })
+            .setLngLat(markerInfo.coordinates)
+            .addTo(map)
+            .setPopup(new mapboxgl.Popup({ className: 'custom-popup' }).setHTML(
+                `<h3>${markerInfo.company}</h3>
+                <p>Project: ${markerInfo.project}</p>
+                <p>${markerInfo.placeholder}</p>
+                <a href="https://${markerInfo.website}" target="_blank">Visit Website</a><br>
+                <a href="https://www.graphitehub.com/comparison" target="_blank">Compare to other graphite companies</a>`
+            ));
+            markers.push(marker);
+        });
+
+        if (selectedProject) {
+            const selectedMarker = companyMarkers.find(marker => marker.project === selectedProject);
+            if (selectedMarker) {
+                map.flyTo({ center: selectedMarker.coordinates, zoom: 12 });
+            }
+        }
+    } else {
+        // Show all markers if no company is selected
+        markerData.forEach(markerInfo => {
+            const color = markerInfo.mineProcessing === 'Mine' ? 'red' : 'blue';
+            const marker = new mapboxgl.Marker({
+                color: color,
+                draggable: false,
+                rotation: 45,
+                scale: .5
+            })
+            .setLngLat(markerInfo.coordinates)
+            .addTo(map)
+            .setPopup(new mapboxgl.Popup({ className: 'custom-popup' }).setHTML(
+                `<h3>${markerInfo.company}</h3>
+                <p>Project: ${markerInfo.project}</p>
+                <p>${markerInfo.placeholder}</p>
+                <a href="https://${markerInfo.website}" target="_blank">Visit Website</a><br>
+                <a href="https://www.graphitehub.com/comparison" target="_blank">Compare to other graphite companies</a>`
+            ));
+            markers.push(marker);
+        });
+    }
+}
+
+// Function to reset the map and show all markers
+function resetMap() {
+    map.flyTo({ center: [0, 0], zoom: 1 });
+    
+    // Restore the original order of company options
+    document.getElementById('company-filter').innerHTML = '';
+    originalCompanyOptions.forEach(option => document.getElementById('company-filter').add(option));
+
+    // Set the "Filter by Company" option as selected
+    document.getElementById('company-filter').selectedIndex = 0;
+
+    // Clear and disable the project filter
+    document.getElementById('project-filter').innerHTML = '<option value="">Filter by Project</option>';
+    document.getElementById('project-filter').disabled = true;
+
+    // Reset markers to show all
+    filterMarkers();
+}
+
+// Initialize all markers
+markerData.forEach(markerInfo => {
+    const color = markerInfo.mineProcessing === 'Mine' ? 'red' : 'blue';
+    const marker = new mapboxgl.Marker({
+        color: color,
+        draggable: false,
+        rotation: 45,
+        scale: .5
+    })
+    .setLngLat(markerInfo.coordinates)
+    .addTo(map)
+    .setPopup(new mapboxgl.Popup({ className: 'custom-popup' }).setHTML(
+        `<h3>${markerInfo.company}</h3>
+        <p>Project: ${markerInfo.project}</p>
+        <p>${markerInfo.placeholder}</p>
+        <a href="https://${markerInfo.website}" target="_blank">Visit Website</a><br>
+        <a href="https://www.graphitehub.com/comparison" target="_blank">Compare to other graphite companies</a>`
+    ));
+    markers.push(marker);
+});
+
+map.on('click', 'custom-marker', (e) => {
+    const coordinates = e.features[0].geometry.coordinates.slice();
+    map.flyTo({ center: coordinates, zoom: 12 });
+});
+
+// Event listeners for the filters
+document.getElementById('company-filter').addEventListener('change', () => {
+    filterProjects();
+    filterMarkers(); // Filter and update markers
+});
+
+document.getElementById('project-filter').addEventListener('change', filterMarkers); // Zoom to the selected project
+
+// Disable map rotation using right click + drag.
+map.dragRotate.disable();  // Add this line here
+  
+</script>
+</body>
+</html>
